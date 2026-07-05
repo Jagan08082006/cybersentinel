@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scan History — CyberSentinel</title>
+<style>
+  :root {
+    --bg: #0E1217; --panel: #161B22; --panel-border: #232A34;
+    --text: #E6EAF0; --muted: #8A96A6; --amber: #FF9A3C;
+    --teal: #3DDC97; --red: #FF5C5C;
+    --mono: 'JetBrains Mono', 'Courier New', monospace;
+    --sans: 'Inter', -apple-system, Segoe UI, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: radial-gradient(circle at 20% -10%, #1A2230 0%, var(--bg) 55%);
+    color: var(--text); font-family: var(--sans); min-height: 100vh;
+  }
+  header {
+    padding: 24px; display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid var(--panel-border);
+  }
+  header a { color: var(--teal); text-decoration: none; font-family: var(--mono); font-size: 13px; }
+  h1 { font-size: 20px; margin: 0; }
+  main { max-width: 760px; margin: 0 auto; padding: 30px 20px; }
+  .scan-row {
+    background: var(--panel); border: 1px solid var(--panel-border);
+    border-radius: 8px; padding: 16px 20px; margin-bottom: 12px;
+    display: flex; justify-content: space-between; align-items: center;
+    text-decoration: none; color: var(--text);
+  }
+  .scan-row:hover { border-color: var(--amber); }
+  .scan-url { font-family: var(--mono); font-size: 14px; }
+  .scan-date { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .sev-badge { font-family: var(--mono); font-size: 12px; padding: 4px 10px; border-radius: 4px; }
+  .sev-Critical { background: rgba(255,92,92,0.15); color: var(--red); }
+  .sev-High { background: rgba(255,122,69,0.15); color: #FF7A45; }
+  .sev-Medium { background: rgba(255,154,60,0.15); color: var(--amber); }
+  .sev-Low, .sev-VeryLow { background: rgba(61,220,151,0.15); color: var(--teal); }
+  .empty { color: var(--muted); text-align: center; padding: 40px; font-family: var(--mono); font-size: 13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Scan History</h1>
+  <a href="/">← Back to Scanner</a>
+</header>
+<main>
+  {% if scans %}
+    {% for scan in scans %}
+    <a href="/history/{{ scan.id }}" class="scan-row">
+      <div>
+        <div class="scan-url">{{ scan.target_url }}</div>
+        <div class="scan-date">{{ scan.scanned_at[:19].replace('T', ' ') }}</div>
+      </div>
+      <span class="sev-badge sev-{{ scan.severity.replace(' ', '') }}">{{ scan.risk_score }} · {{ scan.severity }}</span>
+    </a>
+    {% endfor %}
+  {% else %}
+    <div class="empty">No scans yet. Run your first scan from the home page.</div>
+  {% endif %}
+</main>
+</body>
+</html>

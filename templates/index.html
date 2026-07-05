@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CyberSentinel — Vulnerability Assessment Platform</title>
+<style>
+  :root {
+    --bg: #0E1217; --panel: #161B22; --panel-border: #232A34;
+    --text: #E6EAF0; --muted: #8A96A6; --amber: #FF9A3C;
+    --teal: #3DDC97; --red: #FF5C5C;
+    --mono: 'JetBrains Mono','Courier New',monospace;
+    --sans: 'Inter',-apple-system,Segoe UI,sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: radial-gradient(circle at 20% -10%, #1A2230 0%, var(--bg) 55%);
+    color: var(--text); font-family: var(--sans); min-height: 100vh;
+  }
+  .scanline {
+    position: fixed; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--amber), transparent);
+    animation: sweep 4s linear infinite; opacity: 0.6; z-index: 10;
+  }
+  @keyframes sweep { 0%{transform:translateY(0)} 100%{transform:translateY(100vh)} }
+  header { padding: 36px 24px 20px; text-align: center; border-bottom: 1px solid var(--panel-border); }
+  .eyebrow { font-family:var(--mono); color:var(--amber); letter-spacing:.15em; font-size:12px; text-transform:uppercase; }
+  h1 { font-size:32px; margin:10px 0 6px; letter-spacing:-0.01em; }
+  .subtitle { color:var(--muted); font-size:14px; max-width:520px; margin:0 auto; }
+  .nav-bar { margin-top:14px; font-family:var(--mono); font-size:12px; }
+  .nav-bar a { text-decoration:none; margin: 0 8px; }
+  main { max-width:760px; margin:0 auto; padding:32px 20px 80px; }
+  .panel {
+    background:var(--panel); border:1px solid var(--panel-border);
+    border-radius:10px; padding:26px; margin-bottom:22px;
+  }
+  .panel-title {
+    font-family:var(--mono); font-size:12px; color:var(--muted);
+    text-transform:uppercase; letter-spacing:.1em; margin-bottom:16px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .panel-title::before { content:''; width:6px; height:6px; background:var(--teal); border-radius:50%; }
+  label { display:block; font-size:13px; color:var(--muted); margin-bottom:6px; margin-top:16px; }
+  label:first-of-type { margin-top:0; }
+  input[type="text"] {
+    width:100%; background:#0B0F14; border:1px solid var(--panel-border);
+    border-radius:6px; padding:12px 14px; color:var(--text);
+    font-family:var(--mono); font-size:14px;
+  }
+  input[type="text"]:focus, .pw-input input:focus { outline:none; border-color:var(--amber); }
+
+  /* Password input with eye icon */
+  .pw-wrap { position:relative; }
+  .pw-input { position:relative; }
+  .pw-input input {
+    width:100%; background:#0B0F14; border:1px solid var(--panel-border);
+    border-radius:6px; padding:12px 44px 12px 14px; color:var(--text);
+    font-family:var(--mono); font-size:14px;
+  }
+  .pw-toggle {
+    position:absolute; right:12px; top:50%; transform:translateY(-50%);
+    background:none; border:none; cursor:pointer; color:var(--muted);
+    font-size:18px; padding:0; line-height:1;
+  }
+  .pw-toggle:hover { color:var(--text); }
+
+  /* Password strength meter (live) */
+  .pw-strength-bar {
+    height:4px; border-radius:2px; background:var(--panel-border);
+    margin-top:8px; overflow:hidden;
+  }
+  .pw-strength-fill { height:100%; width:0; transition:width .3s, background .3s; border-radius:2px; }
+  .pw-hint { font-size:12px; color:var(--muted); margin-top:5px; }
+  .pw-min-warn { font-size:12px; color:var(--red); margin-top:4px; display:none; }
+
+  .hint { color:var(--muted); font-size:12px; margin-top:5px; }
+  button[type="submit"] {
+    margin-top:22px; width:100%; background:var(--amber); color:#1A0F00;
+    border:none; padding:14px; border-radius:6px; font-weight:600;
+    font-size:14px; cursor:pointer; letter-spacing:.02em;
+  }
+  button[type="submit"]:hover { background:#ffaa5c; }
+  .error-box {
+    background:rgba(255,92,92,.1); border:1px solid var(--red);
+    color:var(--red); padding:14px; border-radius:6px; margin-bottom:20px; font-size:14px;
+  }
+  .risk-hero { text-align:center; padding:30px 20px; }
+  .risk-number { font-family:var(--mono); font-size:64px; font-weight:700; line-height:1; }
+  .risk-label { font-family:var(--mono); font-size:13px; text-transform:uppercase; letter-spacing:.15em; margin-top:8px; }
+  .sev-Critical { color:var(--red); }
+  .sev-High { color:#FF7A45; }
+  .sev-Medium { color:var(--amber); }
+  .sev-Low,.sev-VeryLow { color:var(--teal); }
+  .meter { width:100%; height:8px; background:#0B0F14; border-radius:4px; overflow:hidden; margin-top:16px; }
+  .meter-fill { height:100%; background:linear-gradient(90deg,var(--teal),var(--amber),var(--red)); }
+  .dl-btn {
+    display:inline-block; margin-top:18px; background:var(--teal); color:#04231a;
+    font-family:var(--mono); font-size:13px; font-weight:600; text-decoration:none;
+    padding:10px 20px; border-radius:6px;
+  }
+  ul.findings { list-style:none; padding:0; margin:0; }
+  ul.findings li {
+    font-family:var(--mono); font-size:13px; color:var(--muted);
+    padding:8px 0; border-bottom:1px solid var(--panel-border);
+  }
+  ul.findings li:last-child { border-bottom:none; }
+  .row {
+    display:flex; justify-content:space-between; align-items:center;
+    font-family:var(--mono); font-size:13px;
+    padding:7px 0; border-bottom:1px solid var(--panel-border);
+  }
+  .row:last-child { border-bottom:none; }
+  .tag { font-size:11px; padding:2px 8px; border-radius:4px; font-family:var(--mono); }
+  .tag-ok { background:rgba(61,220,151,.15); color:var(--teal); }
+  .tag-bad { background:rgba(255,92,92,.15); color:var(--red); }
+  .tag-open { background:rgba(255,154,60,.15); color:var(--amber); }
+  .ai-suggest {
+    margin-top:14px; padding:14px; background:rgba(61,220,151,.06);
+    border:1px solid rgba(61,220,151,.25); border-radius:8px;
+  }
+  .ai-suggest-title { color:var(--teal); font-family:var(--mono); font-size:12px; margin-bottom:8px; text-transform:uppercase; letter-spacing:.08em; }
+  .ai-suggest-pw { font-family:var(--mono); font-size:15px; letter-spacing:.04em; color:var(--text); }
+  .ai-suggest-tip { color:var(--muted); font-size:12px; margin-top:6px; }
+  .ssl-ok { color:var(--teal); }
+  .ssl-warn { color:var(--amber); }
+  .ssl-bad { color:var(--red); }
+  footer { text-align:center; color:var(--muted); font-size:12px; padding:20px; }
+</style>
+</head>
+<body>
+<div class="scanline"></div>
+
+<header>
+  <div class="eyebrow">/// automated security scanning</div>
+  <h1>CyberSentinel</h1>
+  <p class="subtitle">Header checks · Port scan · SSL · Password analysis · Broken links — one risk score.</p>
+  <div class="nav-bar">
+    <span style="color:var(--muted);">Hello, <span style="color:var(--teal);">{{ session.username }}</span></span>
+    <a href="/history" style="color:var(--amber);">📋 Scan History</a>
+    <a href="/logout" style="color:var(--red);">Logout</a>
+  </div>
+</header>
+
+<main>
+
+  <form method="POST" class="panel">
+    <div class="panel-title">Target Configuration</div>
+
+    {% if error %}<div class="error-box">{{ error }}</div>{% endif %}
+
+    <label for="target_url">Website URL or host</label>
+    <input type="text" id="target_url" name="target_url" placeholder="example.com" required>
+    <div class="hint">Only scan sites/systems you own or have permission to test.</div>
+
+    <label for="password">Password to analyze (optional)</label>
+    <div class="pw-wrap">
+      <div class="pw-input">
+        <input type="password" id="password" name="password" placeholder="Leave blank to skip this check" oninput="livePasswordCheck(this.value)">
+        <button type="button" class="pw-toggle" onclick="togglePassword()" title="Show/hide password">👁</button>
+      </div>
+      <div class="pw-strength-bar"><div class="pw-strength-fill" id="pwStrengthFill"></div></div>
+      <div class="pw-min-warn" id="pwMinWarn">⚠ Password must be at least 8 characters</div>
+      <div class="pw-hint" id="pwHintText">This only checks strength — not tested against any login form.</div>
+    </div>
+
+    <button type="submit">Run Scan</button>
+  </form>
+
+  {% if results %}
+
+    <div class="panel risk-hero">
+      <div class="panel-title" style="justify-content:center;">Overall Risk Score</div>
+      <div class="risk-number sev-{{ results.risk_report.severity.replace(' ','') }}">{{ results.risk_report.total_score }}</div>
+      <div class="risk-label sev-{{ results.risk_report.severity.replace(' ','') }}">{{ results.risk_report.severity }} Risk</div>
+      <div class="meter"><div class="meter-fill" id="riskMeterFill" data-width="{{ results.risk_report.capped_score }}"></div></div>
+      <a href="/download-report" class="dl-btn">⬇ Download PDF Report</a>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Security Headers — {{ results.target_url }}</div>
+      {% if results.header_report.error %}
+        <div class="error-box">{{ results.header_report.error }}</div>
+      {% else %}
+        {% for item in results.header_report.present %}
+          <div class="row"><span>{{ item.header }}</span><span class="tag tag-ok">PRESENT</span></div>
+        {% endfor %}
+        {% for item in results.header_report.missing %}
+          <div class="row"><span>{{ item.header }}</span><span class="tag tag-bad">MISSING</span></div>
+        {% endfor %}
+      {% endif %}
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">SSL / HTTPS Certificate</div>
+      {% if results.ssl_report.error %}
+        <div class="row"><span>SSL Check</span><span class="tag tag-bad">ERROR</span></div>
+        <div class="row"><span style="color:var(--muted);font-size:12px;">{{ results.ssl_report.error }}</span></div>
+      {% else %}
+        <div class="row">
+          <span>HTTPS Supported</span>
+          <span class="tag {% if results.ssl_report.has_ssl %}tag-ok{% else %}tag-bad{% endif %}">
+            {% if results.ssl_report.has_ssl %}YES{% else %}NO{% endif %}
+          </span>
+        </div>
+        {% if results.ssl_report.has_ssl %}
+          <div class="row"><span>Certificate Valid</span><span class="tag {% if results.ssl_report.valid %}tag-ok{% else %}tag-bad{% endif %}">{% if results.ssl_report.valid %}VALID{% else %}EXPIRED{% endif %}</span></div>
+          <div class="row"><span>Issuer</span><span style="font-family:var(--mono);font-size:12px;">{{ results.ssl_report.issuer }}</span></div>
+          <div class="row"><span>Expires On</span>
+            <span class="{% if results.ssl_report.days_until_expiry > 30 %}ssl-ok{% elif results.ssl_report.days_until_expiry > 7 %}ssl-warn{% else %}ssl-bad{% endif %}" style="font-family:var(--mono);font-size:12px;">
+              {{ results.ssl_report.expires_on }} ({{ results.ssl_report.days_until_expiry }} days left)
+            </span>
+          </div>
+        {% endif %}
+      {% endif %}
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Port Scan — {{ results.port_report.host }}</div>
+      {% if results.port_report.error %}
+        <div class="error-box">{{ results.port_report.error }}</div>
+      {% else %}
+        {% if results.port_report.open_ports %}
+          {% for item in results.port_report.open_ports %}
+            <div class="row"><span>Port {{ item.port }} — {{ item.service }}</span><span class="tag tag-open">OPEN</span></div>
+          {% endfor %}
+        {% else %}
+          <div class="row"><span>No common ports open</span><span class="tag tag-ok">CLEAN</span></div>
+        {% endif %}
+      {% endif %}
+    </div>
+
+    {% if results.password_report %}
+    <div class="panel">
+      <div class="panel-title">Password Strength</div>
+      <div class="row">
+        <span>Strength</span>
+        <span class="tag {% if results.password_report.strength == 'Strong' %}tag-ok{% elif results.password_report.strength == 'Moderate' %}tag-open{% else %}tag-bad{% endif %}">
+          {{ results.password_report.strength }} ({{ results.password_report.score }}/100)
+        </span>
+      </div>
+      <ul class="findings">
+        {% for issue in results.password_report.issues %}
+          <li>⚠ {{ issue }}</li>
+        {% endfor %}
+      </ul>
+
+      {% if results.ai_suggestion and not results.ai_suggestion.error %}
+      <div class="ai-suggest">
+        <div class="ai-suggest-title">💡 AI Suggested Strong Password</div>
+        <div class="ai-suggest-pw">{{ results.ai_suggestion.suggestion }}</div>
+        {% if results.ai_suggestion.tip %}
+        <div class="ai-suggest-tip">{{ results.ai_suggestion.tip }}</div>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="panel">
+      <div class="panel-title">Broken Links — {{ results.link_report.total_links_found }} found, {{ results.link_report.checked_links }} checked</div>
+      {% if results.link_report.error %}
+        <div class="error-box">{{ results.link_report.error }}</div>
+      {% elif results.link_report.broken_links %}
+        {% for item in results.link_report.broken_links %}
+          <div class="row"><span style="word-break:break-all;">{{ item.url }}</span><span class="tag tag-bad">{{ item.status_code or 'ERROR' }}</span></div>
+        {% endfor %}
+      {% else %}
+        <div class="row"><span>No broken links found</span><span class="tag tag-ok">CLEAN</span></div>
+      {% endif %}
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Why this score?</div>
+      <ul class="findings">
+        {% for reason in results.risk_report.reasons %}
+          <li>— {{ reason }}</li>
+        {% else %}
+          <li>No risk factors found.</li>
+        {% endfor %}
+      </ul>
+    </div>
+
+  {% endif %}
+
+</main>
+
+<footer>CyberSentinel · Automated Vulnerability Assessment &amp; Security Scanning Platform</footer>
+
+{% if results %}
+<script>
+  var fillEl = document.getElementById('riskMeterFill');
+  if (fillEl) fillEl.style.width = fillEl.getAttribute('data-width') + '%';
+</script>
+{% endif %}
+
+<script>
+function togglePassword() {
+  var inp = document.getElementById('password');
+  var btn = document.querySelector('.pw-toggle');
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    btn.textContent = '🙈';
+  } else {
+    inp.type = 'password';
+    btn.textContent = '👁';
+  }
+}
+
+function livePasswordCheck(val) {
+  var fill = document.getElementById('pwStrengthFill');
+  var warn = document.getElementById('pwMinWarn');
+  var hint = document.getElementById('pwHintText');
+
+  // Show minimum length warning
+  if (val.length > 0 && val.length < 8) {
+    warn.style.display = 'block';
+  } else {
+    warn.style.display = 'none';
+  }
+
+  if (val.length === 0) { fill.style.width = '0'; fill.style.background = ''; return; }
+
+  // Simple live scoring
+  var score = 0;
+  if (val.length >= 8) score += 20;
+  if (val.length >= 12) score += 15;
+  if (/[a-z]/.test(val)) score += 15;
+  if (/[A-Z]/.test(val)) score += 15;
+  if (/[0-9]/.test(val)) score += 15;
+  if (/[!@#$%^&*(),.?":{}|<>_\-+=]/.test(val)) score += 20;
+  score = Math.min(score, 100);
+
+  fill.style.width = score + '%';
+  if (score >= 80) {
+    fill.style.background = '#3DDC97';
+    hint.textContent = 'Strong password ✓';
+  } else if (score >= 50) {
+    fill.style.background = '#FF9A3C';
+    hint.textContent = 'Moderate — try adding symbols or uppercase';
+  } else {
+    fill.style.background = '#FF5C5C';
+    hint.textContent = 'Weak — add uppercase, numbers & special characters';
+  }
+}
+</script>
+</body>
+</html>
